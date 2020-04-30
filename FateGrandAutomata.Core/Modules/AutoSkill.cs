@@ -50,6 +50,11 @@ namespace FateGrandAutomata
         {
             Location.Click();
 
+            AutomataApi.Wait(0.5);
+
+            // Exit any extra menu
+            Game.BattleExtrainfoWindowCloseClick.Click();
+
             WaitForAnimationToFinish();
         }
 
@@ -126,6 +131,9 @@ namespace FateGrandAutomata
             AutomataApi.Wait(0.3);
 
             Game.BattleOrderChangeOkClick.Click();
+
+            // Extra wait to allow order change dialog to close
+            AutomataApi.Wait(1);
 
             WaitForAnimationToFinish(15);
 

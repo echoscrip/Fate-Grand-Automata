@@ -84,10 +84,14 @@ namespace FateGrandAutomata
 
             AutomataApi.Wait(2);
 
-            Game.MenuBoostItemClickArray[Preferences.Instance.BoostItemSelectionMode].Click();
+            var boostItem = Preferences.Instance.BoostItemSelectionMode;
+            if (boostItem >= 0)
+            {
+                Game.MenuBoostItemClickArray[boostItem].Click();
 
-            // in case you run out of items
-            Game.MenuBoostItemSkipClick.Click();
+                // in case you run out of items
+                Game.MenuBoostItemSkipClick.Click();
+            }
 
             if (Preferences.Instance.StorySkip)
             {

@@ -96,7 +96,7 @@ namespace FateGrandAutomata
 
         public bool StopAfterBond10 => GetBool(R.pref_stop_bond10);
 
-        public int BoostItemSelectionMode => GetStringAsInt(R.pref_boost_item);
+        public int BoostItemSelectionMode => GetStringAsInt(R.pref_boost_item, -1);
 
         // TODO: Support debug mode
         public bool DebugMode => false;
@@ -106,5 +106,9 @@ namespace FateGrandAutomata
         public IFgoRefillPreferences Refill { get; }
 
         public bool IgnoreNotchCalculation => GetBool(R.pref_ignore_notch);
+
+        public bool UseRootForScreenshots => GetBool(R.pref_use_root_screenshot);
+
+        public bool UseRootForGestures => GetBool(R.pref_use_root_gestures);
     }
 }
