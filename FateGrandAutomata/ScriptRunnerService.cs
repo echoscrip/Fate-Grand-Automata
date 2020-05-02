@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using Android;
 using Android.AccessibilityServices;
 using Android.App;
@@ -22,8 +23,9 @@ namespace FateGrandAutomata
     public class ScriptRunnerService : AccessibilityService
     {
         FrameLayout _layout;
+        HighlightView _highlightView;
         IWindowManager _windowManager;
-        WindowManagerLayoutParams _layoutParams;
+        WindowManagerLayoutParams _layoutParams, _highlightLayoutParams;
         readonly DisplayMetrics _metrics = new DisplayMetrics();
         IScreenshotService _sshotService;
         IGestureService _gestureService;
@@ -64,7 +66,9 @@ namespace FateGrandAutomata
             if (!RegisterGestures())
                 return false;
 
+            _windowManager.AddView(_highlightView, _highlightLayoutParams);
             _windowManager.AddView(_layout, _layoutParams);
+
             ServiceStarted = true;
 
             ShowForegroundNotification();
@@ -147,6 +151,7 @@ namespace FateGrandAutomata
             ImageLocator.ClearCache();
 
             _windowManager.RemoveView(_layout);
+            _windowManager.RemoveView(_highlightView);
             ServiceStarted = false;
 
             HideForegroundNotification();
@@ -158,8 +163,7 @@ namespace FateGrandAutomata
 
         void SetScriptControlBtnIcon(int IconId)
         {
-            _scriptCtrlBtn.SetCompoundDrawablesWithIntrinsicBounds(GetDrawable(IconId),
-                null, null, null);
+            _scriptCtrlBtn.SetImageResource(IconId);
         }
 
         void OnScriptExit(string Message = null)
@@ -237,7 +241,7 @@ namespace FateGrandAutomata
             base.OnTaskRemoved(RootIntent);
         }
 
-        Button _scriptCtrlBtn;
+        ImageButton _scriptCtrlBtn;
 
         protected override void OnServiceConnected()
         {
@@ -264,7 +268,17 @@ namespace FateGrandAutomata
             var inflator = LayoutInflater.From(this);
             inflator.Inflate(Resource.Layout.script_runner, _layout);
 
-            _scriptCtrlBtn = _layout.FindViewById<Button>(Resource.Id.script_toggle_btn);
+            _highlightView = new HighlightView(this);
+            _highlightLayoutParams = new WindowManagerLayoutParams
+            {
+                Type = WindowManagerTypes.AccessibilityOverlay,
+                Format = Format.Translucent,
+                Flags = WindowManagerFlags.NotFocusable | WindowManagerFlags.NotTouchable,
+                Width = ViewGroup.LayoutParams.MatchParent,
+                Height = ViewGroup.LayoutParams.MatchParent
+            };
+
+            _scriptCtrlBtn = _layout.FindViewById<ImageButton>(Resource.Id.script_toggle_btn);
 
             _scriptCtrlBtn.Click += (S, E) =>
             {
@@ -301,6 +315,8 @@ namespace FateGrandAutomata
             return (x, y);
         }
 
+        readonly Stopwatch _dragStopwatch = new Stopwatch();
+
         void ScriptCtrlBtnOnTouch(object S, View.TouchEventArgs E)
         {
             switch (E.Event.ActionMasked)
@@ -310,6 +326,7 @@ namespace FateGrandAutomata
                     _dX = _layoutParams.X.Clip(0, maxX) - E.Event.RawX;
                     _dY = _layoutParams.Y.Clip(0, maxY) - E.Event.RawY;
                     _lastAction = MotionEventActions.Down;
+                    _dragStopwatch.Restart();
 
                     E.Handled = false;
                     break;
@@ -318,12 +335,8 @@ namespace FateGrandAutomata
                     var newX = E.Event.RawX + _dX;
                     var newY = E.Event.RawY + _dY;
 
-                    var d = Math.Sqrt(Math.Pow(newX - _layoutParams.X, 2) + Math.Pow(newY - _layoutParams.Y, 2));
-
-                    if (_dragging || d > DragThreshold)
+                    if (_dragStopwatch.ElapsedMilliseconds > ViewConfiguration.LongPressTimeout)
                     {
-                        _dragging = true;
-
                         var (mX, mY) = GetMaxBtnCoordinates();
                         _layoutParams.X = newX.Round().Clip(0, mX);
                         _layoutParams.Y = newY.Round().Clip(0, mY);
@@ -338,15 +351,13 @@ namespace FateGrandAutomata
 
                 case MotionEventActions.Up:
                     E.Handled = _lastAction == MotionEventActions.Move;
-                    _dragging = false;
+                    _dragStopwatch.Reset();
                     break;
             }
         }
 
         float _dX, _dY;
-        bool _dragging;
         MotionEventActions _lastAction;
-        const int DragThreshold = 100;
 
         public override void OnAccessibilityEvent(AccessibilityEvent E) { }
 
